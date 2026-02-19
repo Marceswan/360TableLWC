@@ -1,5 +1,7 @@
 # 360 Table LWC
 
+> **Built on the shoulders of [James Hou's](https://github.com/tsalb) [lwc-utils](https://github.com/tsalb/lwc-utils).** The SOQL Datatable architecture and patterns from that project served as the foundation for this Data Cloud-specific implementation.
+
 Visual configurator and runtime component for Data Cloud datatables in Salesforce.
 
 ## What's Included
