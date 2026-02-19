@@ -1,0 +1,26 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<LightningComponentBundle xmlns="http://soap.sforce.com/2006/04/metadata">
+  <apiVersion>65.0</apiVersion>
+  <isExposed>true</isExposed>
+  <masterLabel>Data 360 Table</masterLabel>
+  <description>Renders a Data Cloud datatable from a saved Data 360 configuration.</description>
+  <targets>
+    <target>lightning__AppPage</target>
+    <target>lightning__RecordPage</target>
+    <target>lightning__HomePage</target>
+  </targets>
+  <targetConfigs>
+    <targetConfig targets="lightning__AppPage, lightning__HomePage">
+      <property name="configName" label="Data 360 Config" type="String" datasource="apex://Data360ConfigPicklist" description="Select a saved Data 360 Table Configuration." required="true"/>
+      <property name="title" label="Title" type="String"/>
+      <property name="iconName" label="Icon" type="String" description="lightning-card compatible icon name (e.g. standard:data_streams)."/>
+      <property name="showRecordCount" label="Show Record Count" type="Boolean" default="false"/>
+    </targetConfig>
+    <targetConfig targets="lightning__RecordPage">
+      <property name="configName" label="Data 360 Config" type="String" datasource="apex://Data360ConfigPicklist" description="Select a saved Data 360 Table Configuration. WHERE clause supports $record.FieldName merge." required="true"/>
+      <property name="title" label="Title" type="String"/>
+      <property name="iconName" label="Icon" type="String" description="lightning-card compatible icon name (e.g. standard:data_streams)."/>
+      <property name="showRecordCount" label="Show Record Count" type="Boolean" default="false"/>
+    </targetConfig>
+  </targetConfigs>
+</LightningComponentBundle>

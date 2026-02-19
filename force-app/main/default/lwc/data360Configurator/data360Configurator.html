@@ -1,0 +1,164 @@
+<template>
+  <lightning-card title="Data 360 Table Configurator" icon-name="standard:data_streams">
+    <div slot="actions">
+      <lightning-button label="New" onclick={handleNew} class="slds-m-right_x-small"></lightning-button>
+      <lightning-button label="Delete" onclick={handleDeleteClick} disabled={isDeleteDisabled} variant="destructive-text" class="slds-m-right_x-small"></lightning-button>
+      <lightning-button label="Save" onclick={handleSave} variant="brand" disabled={isSaveDisabled}></lightning-button>
+    </div>
+
+    <div class="slds-grid slds-gutters slds-p-around_medium">
+      <!-- LEFT PANEL: Config Builder -->
+      <div class="slds-col slds-size_1-of-2">
+        <div class="slds-card slds-p-around_medium">
+          <lightning-combobox
+            label="Load Existing Config"
+            value={selectedConfigId}
+            options={configOptions}
+            onchange={handleConfigSelect}
+            placeholder="-- New Config --"
+            class="slds-m-bottom_small"
+          ></lightning-combobox>
+
+          <lightning-input
+            label="Config Name"
+            value={configName}
+            onchange={handleNameChange}
+            required
+            class="slds-m-bottom_small"
+          ></lightning-input>
+
+          <lightning-textarea
+            label="Description"
+            value={configDescription}
+            onchange={handleDescriptionChange}
+            max-length="500"
+            class="slds-m-bottom_small"
+          ></lightning-textarea>
+
+          <lightning-combobox
+            label="Data Cloud Object"
+            value={selectedObject}
+            options={objectOptions}
+            onchange={handleObjectSelect}
+            placeholder="Search for a Data Cloud object..."
+            class="slds-m-bottom_small"
+          ></lightning-combobox>
+
+          <template if:true={hasFields}>
+            <div class="slds-m-bottom_small">
+              <h3 class="slds-text-heading_small slds-m-bottom_x-small">Fields</h3>
+              <div class="slds-scrollable_y" style="max-height: 400px;">
+                <table class="slds-table slds-table_cell-buffer slds-table_bordered slds-table_striped">
+                  <thead>
+                    <tr class="slds-line-height_reset">
+                      <th scope="col" style="width: 50px;">
+                        <span class="slds-truncate">Visible</span>
+                      </th>
+                      <th scope="col">
+                        <span class="slds-truncate">Field API Name</span>
+                      </th>
+                      <th scope="col">
+                        <span class="slds-truncate">Label</span>
+                      </th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    <template for:each={fields} for:item="field">
+                      <tr key={field.fieldName}>
+                        <td>
+                          <lightning-input
+                            type="checkbox"
+                            checked={field.visible}
+                            data-field-name={field.fieldName}
+                            onchange={handleFieldVisibleChange}
+                            variant="label-hidden"
+                            label="Visible"
+                          ></lightning-input>
+                        </td>
+                        <td>
+                          <span class="slds-truncate">{field.fieldName}</span>
+                        </td>
+                        <td>
+                          <lightning-input
+                            value={field.label}
+                            data-field-name={field.fieldName}
+                            onchange={handleFieldLabelChange}
+                            variant="label-hidden"
+                            label="Label"
+                          ></lightning-input>
+                        </td>
+                      </tr>
+                    </template>
+                  </tbody>
+                </table>
+              </div>
+            </div>
+          </template>
+
+          <lightning-input
+            label="WHERE Clause"
+            value={whereClause}
+            onchange={handleWhereChange}
+            placeholder="WHERE EFIN__c = $record.EFIN__c"
+            class="slds-m-bottom_small"
+          ></lightning-input>
+
+          <lightning-input
+            type="number"
+            label="Row Limit"
+            value={rowLimit}
+            onchange={handleLimitChange}
+            min="1"
+            max="2000"
+            class="slds-m-bottom_small"
+          ></lightning-input>
+        </div>
+      </div>
+
+      <!-- RIGHT PANEL: Live Preview -->
+      <div class="slds-col slds-size_1-of-2">
+        <div class="slds-card slds-p-around_medium">
+          <h3 class="slds-text-heading_small slds-m-bottom_small">Live Preview</h3>
+          <template if:true={previewQueryString}>
+            <p class="slds-m-bottom_small slds-text-body_small slds-text-color_weak">
+              {previewQueryString}
+            </p>
+            <c-data360-table
+              query-string={previewQueryString}
+              column-labels={previewColumnLabels}
+              show-record-count
+            ></c-data360-table>
+          </template>
+          <template if:false={previewQueryString}>
+            <div class="slds-align_absolute-center slds-p-around_large slds-text-color_weak">
+              Select an object and fields to see a preview
+            </div>
+          </template>
+        </div>
+      </div>
+    </div>
+  </lightning-card>
+
+  <!-- Delete Confirmation Modal -->
+  <template if:true={showDeleteModal}>
+    <section role="dialog" tabindex="-1" class="slds-modal slds-fade-in-open">
+      <div class="slds-modal__container">
+        <header class="slds-modal__header">
+          <h2 class="slds-modal__title">Confirm Delete</h2>
+        </header>
+        <div class="slds-modal__content slds-p-around_medium">
+          <p>Are you sure you want to delete the config "{configName}"?</p>
+        </div>
+        <footer class="slds-modal__footer">
+          <lightning-button label="Cancel" onclick={handleDeleteCancel}></lightning-button>
+          <lightning-button label="Delete" variant="destructive" onclick={handleDeleteConfirm} class="slds-m-left_x-small"></lightning-button>
+        </footer>
+      </div>
+    </section>
+    <div class="slds-backdrop slds-backdrop_open"></div>
+  </template>
+
+  <template if:true={isLoading}>
+    <lightning-spinner alternative-text="Loading" size="medium"></lightning-spinner>
+  </template>
+</template>

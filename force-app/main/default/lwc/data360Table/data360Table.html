@@ -1,0 +1,35 @@
+<template>
+  <lightning-card title={title} icon-name={iconName}>
+    <template if:true={showRecordCount}>
+      <p slot="actions" class="slds-text-body_small slds-text-color_weak">
+        {recordCountLabel}
+      </p>
+    </template>
+    <template if:true={isLoading}>
+      <div class="slds-is-relative slds-p-around_large">
+        <lightning-spinner alternative-text="Loading" size="small"></lightning-spinner>
+      </div>
+    </template>
+    <template if:true={hasData}>
+      <lightning-datatable
+        key-field={keyField}
+        data={tableData}
+        columns={tableColumns}
+        hide-checkbox-column
+        sorted-by={sortedBy}
+        sorted-direction={sortedDirection}
+        onsort={handleSort}
+      ></lightning-datatable>
+    </template>
+    <template if:true={hasError}>
+      <div class="slds-p-around_medium slds-text-color_error">
+        {errorMessage}
+      </div>
+    </template>
+    <template if:true={isEmpty}>
+      <div class="slds-p-around_medium slds-text-color_weak slds-align_absolute-center">
+        No records found.
+      </div>
+    </template>
+  </lightning-card>
+</template>
