@@ -18,9 +18,12 @@ lightning-card .slds-card__body {
 /* Related list layout */
 div.page-header {
   border: var(--lwc-borderWidthThin, 1px) solid rgb(201, 201, 201);
+  border-radius: 0.25rem;
+  background-color: #ffffff;
+  overflow: hidden;
 }
 
-ul.page-header-detail {
+div.page-header-detail {
   border-top: var(--lwc-borderWidthThin, 1px) solid rgb(201, 201, 201);
 }
 

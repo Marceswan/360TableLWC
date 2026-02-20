@@ -1,9 +1,7 @@
 <template>
   <!-- ===== Related List layout ===== -->
   <template lwc:if={isUsedAsRelatedList}>
-    <div
-      class="slds-page-header slds-page-header_record-home page-header slds-p-bottom_none"
-    >
+    <div class="slds-page-header slds-page-header_record-home page-header">
       <div class="slds-page-header__row slds-m-bottom_small">
         <div class="slds-page-header__col-title">
           <div class="slds-media">
@@ -27,9 +25,9 @@
 
         <div class="slds-page-header__col-actions">
           <div class="slds-page-header__controls">
-            <div class="slds-page-header__control">
-              <template lwc:if={showSearchBar}>
-                <div class="slds-m-right_x-small" style="width: 200px">
+            <template lwc:if={showSearchBar}>
+              <div class="slds-page-header__control">
+                <div style="width: 200px">
                   <lightning-input
                     type="search"
                     label="Search"
@@ -39,25 +37,25 @@
                     onchange={handleSearchChange}
                   ></lightning-input>
                 </div>
-              </template>
-              <template lwc:if={showRefreshButton}>
+              </div>
+            </template>
+            <template lwc:if={showRefreshButton}>
+              <div class="slds-page-header__control">
                 <lightning-button-icon
                   icon-name="utility:refresh"
                   alternative-text="Refresh"
                   variant="border-filled"
                   onclick={handleRefresh}
                 ></lightning-button-icon>
-              </template>
-            </div>
+              </div>
+            </template>
           </div>
         </div>
       </div>
 
       <div class="slds-page-header__row slds-page-header__row_gutters">
         <div class="slds-page-header__col-details">
-          <ul
-            class="slds-page-header__detail-row slds-p-around_none page-header-detail"
-          >
+          <div class="page-header-detail">
             <template lwc:if={isLoading}>
               <div class="slds-is-relative slds-p-around_large">
                 <lightning-spinner
@@ -89,7 +87,7 @@
                 No records found.
               </div>
             </template>
-          </ul>
+          </div>
         </div>
       </div>
     </div>
@@ -99,15 +97,10 @@
   <template lwc:else>
     <lightning-card icon-name={iconName}>
       <template lwc:if={cardTitle}>
-        <span slot="title">
-          {cardTitle}
-        </span>
+        <span slot="title"> {cardTitle} </span>
       </template>
       <template lwc:if={showToolbar}>
-        <div
-          slot="actions"
-          class="slds-grid slds-grid_vertical-align-center"
-        >
+        <div slot="actions" class="slds-grid slds-grid_vertical-align-center">
           <template lwc:if={showSearchBar}>
             <div class="slds-m-right_x-small" style="width: 200px">
               <lightning-input
