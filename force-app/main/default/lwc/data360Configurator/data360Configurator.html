@@ -2,6 +2,7 @@
   <lightning-card title="Data 360 Table Configurator" icon-name="standard:data_streams">
     <div slot="actions">
       <lightning-button label="New" onclick={handleNew} class="slds-m-right_x-small"></lightning-button>
+      <lightning-button label="Clone" onclick={handleClone} disabled={isCloneDisabled} class="slds-m-right_x-small"></lightning-button>
       <lightning-button label="Delete" onclick={handleDeleteClick} disabled={isDeleteDisabled} variant="destructive-text" class="slds-m-right_x-small"></lightning-button>
       <lightning-button label="Save" onclick={handleSave} variant="brand" disabled={isSaveDisabled}></lightning-button>
     </div>

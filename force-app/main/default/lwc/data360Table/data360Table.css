@@ -2,10 +2,12 @@
   display: block;
 }
 
-/* Match standard SLDS2 related-list card: border, radius, inner spacing */
+/* Match standard SLDS2 related-list card: border, radius, shadow, inner spacing */
 lightning-card .slds-card {
   border: 1px solid #c9c9c9;
-  border-radius: 0.5rem;
+  border-radius: 0.25rem;
+  box-shadow: 0 2px 4px 0 rgba(0, 0, 0, 0.1);
+  background-color: #ffffff;
 }
 
 lightning-card .slds-card__body {

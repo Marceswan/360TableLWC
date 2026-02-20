@@ -2,7 +2,7 @@ public inherited sharing class Data360ConfigService {
 
   // ── CRUD ──────────────────────────────────────────────────────
 
-  @AuraEnabled(cacheable=true)
+  @AuraEnabled
   public static List<Data_360_Table_Config__c> getConfigs() {
     return [
       SELECT Id, Name, Description__c, Object_API_Name__c, Config_JSON__c

@@ -77,6 +77,10 @@ export default class Data360Configurator extends LightningElement {
     return !this.selectedConfigId;
   }
 
+  get isCloneDisabled() {
+    return !this.selectedConfigId;
+  }
+
   get isLoadFieldsDisabled() {
     return !this.objectApiNameInput;
   }
@@ -263,6 +267,12 @@ export default class Data360Configurator extends LightningElement {
     } catch (e) {
       this._showToast('Error', 'Failed to parse config JSON: ' + e.message, 'error');
     }
+  }
+
+  handleClone() {
+    this.selectedConfigId = '';
+    this.configName = this.configName + ' - Copy';
+    this._showToast('Cloned', 'Config cloned — update the name and click Save to create a new copy.', 'info');
   }
 
   handleNew() {

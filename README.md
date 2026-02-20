@@ -6,12 +6,12 @@ Visual configurator and runtime component for Data Cloud datatables in Salesforc
 
 ## What's Included
 
-- **`data360Table`** — Standalone LWC that renders Data Cloud queries from saved configurations or direct query strings. Supports `$record.FieldName`, `$recordId`, and `$CurrentUserId` merge fields on Record Pages.
-- **`data360Configurator`** — Two-panel admin UI for building and previewing Data Cloud table configs. Select objects, toggle field visibility, edit labels, reorder fields, set WHERE clauses, and see a live preview. Includes context record lookup for resolving `$record.FieldName` merge tokens in the preview.
+- **`data360Table`** — Standalone LWC that renders Data Cloud queries from saved configurations or direct query strings. Supports `$record.FieldName`, `$recordId`, and `$CurrentUserId` merge fields on Record Pages. Features configurable search, refresh, record count display, per-field sort controls, and SLDS2-consistent card styling.
+- **`data360Configurator`** — Two-panel admin UI for building and previewing Data Cloud table configs. Select objects, toggle field visibility, edit labels, drag-and-drop reorder fields, configure sort behavior, set WHERE clauses, and see a live preview. Includes context record lookup for resolving `$record.FieldName` merge tokens in the preview.
 - **`Data360ConfigService`** — Apex service handling CRUD for `Data_360_Table_Config__c`, Data Cloud object/field discovery, query execution, searchable object lookup, and context record field value retrieval.
 - **`Data360ConfigPicklist`** — `VisualEditor.DynamicPickList` that populates the App Builder dropdown with saved config names.
 - **`Data_360_Table_Config__c`** — Custom object storing config JSON, object API name, description, and human-readable name.
-- **Permission Sets** — `Data_360_Table_User` (read-only) and `Data_360_Table_Admin` (full CRUD).
+- **Permission Sets** — `Data_360_Table_User` (read-only) and `Data_360_Table_Admin` (full CRUD + tab visibility for Config object and Configurator).
 
 ## Deployment
 
@@ -28,11 +28,18 @@ sf apex run test -n Data360ConfigServiceTests -r human -w 10
 ## App Builder Usage
 
 1. Assign the `Data_360_Table_Admin` permission set to configurator admins.
-2. Create a new App Page and add the `data360Configurator` component.
+2. Open the **360Table Configurator** tab (or add the `data360Configurator` component to an App Page).
 3. Use the configurator to select a Data Cloud object, configure fields, and save.
 4. On any App Page or Record Page, add the `data360Table` component and select a saved config from the **Data 360 Config** dropdown.
 
 ## Configurator Features
+
+### Config Management
+
+- **New** — Clear all fields and start a fresh configuration.
+- **Clone** — Duplicate the currently loaded config (appends " - Copy" to the name). Save to create an independent copy.
+- **Delete** — Remove a saved configuration (with confirmation modal).
+- **Save** — Persist the current configuration. New and cloned configs appear immediately in the Load Existing Config dropdown.
 
 ### Live Preview with Context Records
 
@@ -43,11 +50,28 @@ When a WHERE clause contains `$record.FieldName` merge tokens, the configurator 
 3. Pick a specific record via the record picker.
 4. The preview resolves merge tokens and executes the query with actual values.
 
+Context record selections and view state are persisted with the config for convenience on reload.
+
 ### Field Management
 
 - **Select All / Deselect All** — Bulk toggle field visibility.
 - **Visibility Filter** — Filter the field list to show All Fields, Selected Only, or Unselected Only.
-- **Reorder** — Move fields up or down with arrow buttons to control column order in the generated query and preview.
+- **Drag-and-Drop Reorder** — Drag fields to control column order in the generated query and table.
+- **Custom Labels** — Edit the display label for each field inline.
+- **Per-Field Sortable Toggle** — Enable or disable sorting on individual columns.
+
+### Sort Configuration
+
+- **Default Sort Field** — Select a sortable field to sort by on initial load.
+- **Sort Direction** — Ascending or Descending.
+
+### Table Options
+
+These options are configured in the configurator and stored in the config JSON:
+
+- **Show Record Count** — Displays the row count in parentheses next to the table title (e.g. "My Table (42)").
+- **Show Search** — Adds a client-side search input that filters across all visible columns.
+- **Show Refresh** — Adds a refresh button that re-executes the query.
 
 ## Property Note
 
