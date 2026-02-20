@@ -36,36 +36,29 @@ public inherited sharing class Data360ConfigService {
     delete [SELECT Id FROM Data_360_Table_Config__c WHERE Id = :configId];
   }
 
-  // ── Data Cloud Object Discovery ──────────────────────────────
-
-  @AuraEnabled(cacheable=true)
-  public static List<Map<String, String>> getDataCloudObjects() {
-    List<Map<String, String>> results = new List<Map<String, String>>();
-    for (EntityDefinition ed : [
-      SELECT QualifiedApiName, Label
-      FROM EntityDefinition
-      WHERE QualifiedApiName LIKE '%__dll' OR QualifiedApiName LIKE '%__dlm'
-      ORDER BY QualifiedApiName ASC
-    ]) {
-      results.add(new Map<String, String>{
-        'value' => ed.QualifiedApiName,
-        'label' => ed.Label + ' (' + ed.QualifiedApiName + ')'
-      });
-    }
-    return results;
-  }
-
   // ── Data Cloud Field Discovery ───────────────────────────────
+  // Note: Data Cloud object discovery is handled client-side via
+  // fetch('/services/data/v62.0/sobjects') in the LWC, because DC objects
+  // are not available through Schema.getGlobalDescribe() or EntityDefinition,
+  // and UserInfo.getSessionId() from @AuraEnabled returns a restricted
+  // Lightning session that cannot make REST API callouts.
 
   @AuraEnabled
   public static List<Map<String, String>> getDataCloudFields(String objectApiName) {
     if (String.isBlank(objectApiName)) {
       return new List<Map<String, String>>();
     }
+    // Try FieldDefinition first (standard/custom objects)
     List<Map<String, String>> fields = getFieldsViaFieldDefinition(objectApiName);
     if (!fields.isEmpty()) {
       return fields;
     }
+    // Try Schema.describeSObjects (works for DC objects by explicit name)
+    fields = getFieldsViaDescribe(objectApiName);
+    if (!fields.isEmpty()) {
+      return fields;
+    }
+    // Last resort: FIELDS(ALL) probe query (bounded-field objects only)
     return getFieldsViaProbeQuery(objectApiName);
   }
 
@@ -90,6 +83,32 @@ public inherited sharing class Data360ConfigService {
     } catch (Exception e) {
       // FieldDefinition may not work for all Data Cloud objects — fall through
       System.debug('FieldDefinition query failed for ' + objectApiName + ': ' + e.getMessage());
+    }
+    return fields;
+  }
+
+  @TestVisible
+  private static List<Map<String, String>> getFieldsViaDescribe(String objectApiName) {
+    List<Map<String, String>> fields = new List<Map<String, String>>();
+    if (String.isBlank(objectApiName)) {
+      return fields;
+    }
+    try {
+      Schema.DescribeSObjectResult[] describes = Schema.describeSObjects(new List<String>{ objectApiName });
+      if (!describes.isEmpty()) {
+        Map<String, Schema.SObjectField> fieldMap = describes[0].fields.getMap();
+        List<String> fieldNames = new List<String>(fieldMap.keySet());
+        fieldNames.sort();
+        for (String fieldName : fieldNames) {
+          Schema.DescribeFieldResult dfr = fieldMap.get(fieldName).getDescribe();
+          fields.add(new Map<String, String>{
+            'fieldName' => dfr.getName(),
+            'label' => dfr.getLabel()
+          });
+        }
+      }
+    } catch (Exception e) {
+      System.debug('describeSObjects failed for ' + objectApiName + ': ' + e.getMessage());
     }
     return fields;
   }
@@ -238,6 +257,73 @@ public inherited sharing class Data360ConfigService {
       return 'date';
     }
     return 'text';
+  }
+
+  // ── Context Record Lookups (Live Preview) ──────────────────
+
+  @AuraEnabled(cacheable=true)
+  public static List<Map<String, String>> getSearchableObjects(String searchTerm) {
+    String likeClause = String.isBlank(searchTerm) ? '%' : '%' + String.escapeSingleQuotes(searchTerm.trim()) + '%';
+    List<Map<String, String>> results = new List<Map<String, String>>();
+    for (EntityDefinition ed : [
+      SELECT QualifiedApiName, Label
+      FROM EntityDefinition
+      WHERE Label LIKE :likeClause AND IsQueryable = true
+      ORDER BY Label ASC
+      LIMIT 25
+    ]) {
+      String api = ed.QualifiedApiName;
+      if (api.endsWith('__dll') || api.endsWith('__dlm')) {
+        continue;
+      }
+      results.add(new Map<String, String>{ 'apiName' => api, 'label' => ed.Label });
+      if (results.size() >= 20) {
+        break;
+      }
+    }
+    return results;
+  }
+
+  @AuraEnabled
+  public static Map<String, Object> getRecordFieldValues(String objectApiName, String recordId, List<String> fieldNames) {
+    if (String.isBlank(objectApiName) || String.isBlank(recordId) || fieldNames == null || fieldNames.isEmpty()) {
+      return new Map<String, Object>();
+    }
+    // Validate and sanitize field names
+    List<String> safeFields = new List<String>();
+    Pattern fieldPattern = Pattern.compile('^[a-zA-Z][a-zA-Z0-9_]*(__[a-zA-Z0-9]+)?$');
+    for (String fn : fieldNames) {
+      if (String.isNotBlank(fn) && fieldPattern.matcher(fn.trim()).matches()) {
+        safeFields.add(String.escapeSingleQuotes(fn.trim()));
+      }
+    }
+    if (safeFields.isEmpty()) {
+      return new Map<String, Object>();
+    }
+    String fieldList = String.join(safeFields, ', ');
+    String safeObject = String.escapeSingleQuotes(objectApiName.trim());
+    String safeRecordId = String.escapeSingleQuotes(recordId.trim());
+    String query = 'SELECT ' + fieldList + ' FROM ' + safeObject + ' WHERE Id = \'' + safeRecordId + '\' LIMIT 1';
+
+    List<SObject> rows;
+    try {
+      rows = Database.query(query);
+    } catch (Exception e) {
+      throw new Data360ConfigServiceException('Failed to query record fields: ' + e.getMessage());
+    }
+    if (rows.isEmpty()) {
+      return new Map<String, Object>();
+    }
+    Map<String, Object> result = new Map<String, Object>();
+    Map<String, Object> populated = rows[0].getPopulatedFieldsAsMap();
+    for (String fn : safeFields) {
+      if (populated.containsKey(fn)) {
+        result.put(fn, populated.get(fn));
+      } else {
+        result.put(fn, null);
+      }
+    }
+    return result;
   }
 
   private class Data360ConfigServiceException extends Exception {}

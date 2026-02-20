@@ -6,3 +6,28 @@
   border: 1px solid #d8dde6;
   border-radius: 4px;
 }
+
+.field-filter-combo {
+  max-width: 180px;
+}
+
+.context-object-search {
+  position: relative;
+}
+
+.context-object-dropdown {
+  position: absolute;
+  z-index: 9001;
+  width: 100%;
+  max-height: 200px;
+  overflow-y: auto;
+  background: #fff;
+  border: 1px solid #d8dde6;
+  border-radius: 0 0 4px 4px;
+  box-shadow: 0 2px 3px rgba(0, 0, 0, 0.16);
+}
+
+.context-object-dropdown .slds-listbox__option:hover {
+  background-color: #f3f3f3;
+  cursor: pointer;
+}

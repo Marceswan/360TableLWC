@@ -16,8 +16,24 @@ export default class Data360Table extends LightningElement {
   @api showRecordCount = false;
 
   // For direct query mode (used by configurator preview)
-  @api queryString;
   @api columnLabels;
+
+  _queryString;
+  _queryStringInitialized = false;
+
+  @api
+  get queryString() {
+    return this._queryString;
+  }
+  set queryString(value) {
+    const prev = this._queryString;
+    this._queryString = value;
+    // After initial render, re-execute when query changes
+    if (this._queryStringInitialized && value && value !== prev) {
+      this._parseColumnLabels();
+      this._executeAndRender(value);
+    }
+  }
 
   // Table state
   tableData = [];
@@ -86,12 +102,14 @@ export default class Data360Table extends LightningElement {
   }
 
   async connectedCallback() {
-    if (this.queryString) {
+    if (this._queryString) {
       // Direct query mode (preview from configurator)
       this._parseColumnLabels();
-      await this._executeAndRender(this.queryString);
+      await this._executeAndRender(this._queryString);
+      this._queryStringInitialized = true;
       return;
     }
+    this._queryStringInitialized = true;
 
     if (!this.configName) {
       return;

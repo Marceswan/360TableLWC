@@ -35,18 +35,61 @@
             class="slds-m-bottom_small"
           ></lightning-textarea>
 
-          <lightning-combobox
-            label="Data Cloud Object"
-            value={selectedObject}
-            options={objectOptions}
-            onchange={handleObjectSelect}
-            placeholder="Search for a Data Cloud object..."
-            class="slds-m-bottom_small"
-          ></lightning-combobox>
+          <div class="slds-m-bottom_small">
+            <div class="slds-grid slds-grid_vertical-align-end slds-gutters_xx-small">
+              <div class="slds-col slds-grow">
+                <lightning-input
+                  label="Data Cloud Object API Name"
+                  value={objectApiNameInput}
+                  placeholder="e.g. Client_Transmissions__dlm"
+                  onchange={handleObjectNameChange}
+                  onkeyup={handleObjectNameKeyUp}
+                  field-level-help="Enter the full API name of a Data Cloud object (ending in __dll or __dlm) and click Load Fields"
+                  data-id="object-name-input"
+                ></lightning-input>
+              </div>
+              <div class="slds-col slds-no-flex">
+                <lightning-button
+                  label="Load Fields"
+                  onclick={handleLoadFields}
+                  disabled={isLoadFieldsDisabled}
+                  variant="neutral"
+                  icon-name="utility:refresh"
+                ></lightning-button>
+              </div>
+              <template if:true={selectedObject}>
+                <div class="slds-col slds-no-flex">
+                  <lightning-button-icon
+                    icon-name="utility:close"
+                    alternative-text="Clear object"
+                    variant="bare"
+                    onclick={handleObjectClear}
+                  ></lightning-button-icon>
+                </div>
+              </template>
+            </div>
+            <template if:true={selectedObject}>
+              <div class="slds-text-color_success slds-m-top_xx-small slds-text-body_small">
+                Object validated — {fieldCount} fields loaded
+              </div>
+            </template>
+          </div>
 
           <template if:true={hasFields}>
             <div class="slds-m-bottom_small">
-              <h3 class="slds-text-heading_small slds-m-bottom_x-small">Fields</h3>
+              <div class="slds-grid slds-grid_vertical-align-end slds-m-bottom_x-small">
+                <h3 class="slds-text-heading_small slds-grow slds-align-middle">Fields</h3>
+                <lightning-combobox
+                  label="Show"
+                  value={fieldVisibilityFilter}
+                  options={fieldVisibilityFilterOptions}
+                  onchange={handleFieldVisibilityFilterChange}
+                  variant="label-inline"
+                  class="slds-m-right_small field-filter-combo"
+                ></lightning-combobox>
+                <lightning-button label="Select All" onclick={handleSelectAll} variant="neutral" class="slds-m-right_xx-small"></lightning-button>
+                <lightning-button label="Deselect All" onclick={handleDeselectAll} variant="neutral"></lightning-button>
+              </div>
               <div class="slds-scrollable_y" style="max-height: 400px;">
                 <table class="slds-table slds-table_cell-buffer slds-table_bordered slds-table_striped">
                   <thead>
@@ -60,10 +103,13 @@
                       <th scope="col">
                         <span class="slds-truncate">Label</span>
                       </th>
+                      <th scope="col" style="width: 80px;">
+                        <span class="slds-truncate">Order</span>
+                      </th>
                     </tr>
                   </thead>
                   <tbody>
-                    <template for:each={fields} for:item="field">
+                    <template for:each={fieldsWithPosition} for:item="field" for:index="idx">
                       <tr key={field.fieldName}>
                         <td>
                           <lightning-input
@@ -87,6 +133,30 @@
                             label="Label"
                           ></lightning-input>
                         </td>
+                        <td>
+                          <div class="slds-grid">
+                            <lightning-button-icon
+                              icon-name="utility:arrowup"
+                              alternative-text="Move up"
+                              variant="bare"
+                              size="small"
+                              data-field-name={field.fieldName}
+                              data-index={idx}
+                              onclick={handleMoveFieldUp}
+                              disabled={field.isFirst}
+                            ></lightning-button-icon>
+                            <lightning-button-icon
+                              icon-name="utility:arrowdown"
+                              alternative-text="Move down"
+                              variant="bare"
+                              size="small"
+                              data-field-name={field.fieldName}
+                              data-index={idx}
+                              onclick={handleMoveFieldDown}
+                              disabled={field.isLast}
+                            ></lightning-button-icon>
+                          </div>
+                        </td>
                       </tr>
                     </template>
                   </tbody>
@@ -99,7 +169,7 @@
             label="WHERE Clause"
             value={whereClause}
             onchange={handleWhereChange}
-            placeholder="WHERE EFIN__c = $record.EFIN__c"
+            placeholder="WHERE FieldName__c = 'value'"
             class="slds-m-bottom_small"
           ></lightning-input>
 
@@ -117,21 +187,92 @@
 
       <!-- RIGHT PANEL: Live Preview -->
       <div class="slds-col slds-size_1-of-2">
+        <!-- Context Record Lookup -->
+        <div class="slds-card slds-p-around_medium slds-m-bottom_small">
+          <h3 class="slds-text-heading_small slds-m-bottom_small">Context Record (for $record tokens)</h3>
+          <div class="slds-m-bottom_small context-object-search">
+            <lightning-input
+              label="Context Object"
+              value={contextObjectSearchTerm}
+              placeholder="Search for an object (e.g. Account)"
+              onchange={handleContextObjectSearch}
+              onkeyup={handleContextObjectKeyUp}
+              onfocus={handleContextObjectFocus}
+              onblur={handleContextObjectBlur}
+              autocomplete="off"
+              data-id="context-object-input"
+            ></lightning-input>
+            <template if:true={showContextObjectDropdown}>
+              <div class="slds-dropdown slds-dropdown_left context-object-dropdown" role="listbox">
+                <ul class="slds-listbox slds-listbox_vertical" role="presentation">
+                  <template for:each={contextObjectResults} for:item="obj">
+                    <li key={obj.apiName} role="presentation" class="slds-listbox__item">
+                      <div
+                        class="slds-media slds-listbox__option slds-listbox__option_plain slds-media_small"
+                        role="option"
+                        data-api-name={obj.apiName}
+                        data-label={obj.label}
+                        onmousedown={handleContextObjectSelect}
+                      >
+                        <span class="slds-media__body">
+                          <span class="slds-truncate">
+                            <strong>{obj.label}</strong>
+                            <span class="slds-text-color_weak slds-m-left_xx-small">({obj.apiName})</span>
+                          </span>
+                        </span>
+                      </div>
+                    </li>
+                  </template>
+                  <template if:true={contextObjectNoResults}>
+                    <li role="presentation" class="slds-listbox__item">
+                      <div class="slds-media slds-listbox__option slds-listbox__option_plain slds-media_small">
+                        <span class="slds-media__body slds-text-color_weak">No results found</span>
+                      </div>
+                    </li>
+                  </template>
+                </ul>
+              </div>
+            </template>
+          </div>
+          <template if:true={contextObjectApiName}>
+            <div class="slds-m-bottom_small">
+              <lightning-record-picker
+                label="Context Record"
+                placeholder="Search for a record..."
+                object-api-name={contextObjectApiName}
+                onchange={handleContextRecordChange}
+                data-id="context-record-picker"
+              ></lightning-record-picker>
+            </div>
+          </template>
+          <template if:true={mergeTokenStatusText}>
+            <p class="slds-text-body_small slds-text-color_success slds-m-top_xx-small">
+              {mergeTokenStatusText}
+            </p>
+          </template>
+        </div>
+
+        <!-- Preview -->
         <div class="slds-card slds-p-around_medium">
           <h3 class="slds-text-heading_small slds-m-bottom_small">Live Preview</h3>
-          <template if:true={previewQueryString}>
+          <template if:true={resolvedPreviewQueryString}>
             <p class="slds-m-bottom_small slds-text-body_small slds-text-color_weak">
-              {previewQueryString}
+              {resolvedPreviewQueryString}
             </p>
             <c-data360-table
-              query-string={previewQueryString}
+              query-string={resolvedPreviewQueryString}
               column-labels={previewColumnLabels}
               show-record-count
             ></c-data360-table>
           </template>
-          <template if:false={previewQueryString}>
+          <template if:false={resolvedPreviewQueryString}>
             <div class="slds-align_absolute-center slds-p-around_large slds-text-color_weak">
-              Select an object and fields to see a preview
+              <template if:true={hasPendingMergeTokens}>
+                Select a context record to resolve $record tokens
+              </template>
+              <template if:false={hasPendingMergeTokens}>
+                Select an object and fields to see a preview
+              </template>
             </div>
           </template>
         </div>

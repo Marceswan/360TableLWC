@@ -85,17 +85,6 @@ private class Data360ConfigServiceTests {
   }
 
   @IsTest
-  static void getDataCloudObjects_returns_list() {
-    Test.startTest();
-    List<Map<String, String>> objects = Data360ConfigService.getDataCloudObjects();
-    Test.stopTest();
-
-    System.assertNotEquals(null, objects);
-    System.debug('Data Cloud objects found: ' + objects.size());
-    System.debug('Objects: ' + objects);
-  }
-
-  @IsTest
   static void getDataCloudFields_returns_fields_for_standard_object() {
     Test.startTest();
     List<Map<String, String>> fields = Data360ConfigService.getDataCloudFields('Account');
@@ -356,15 +345,6 @@ private class Data360ConfigServiceTests {
   }
 
   @IsTest
-  static void getDataCloudObjects_handles_no_data_cloud_objects() {
-    Test.startTest();
-    List<Map<String, String>> objects = Data360ConfigService.getDataCloudObjects();
-    Test.stopTest();
-
-    System.assertNotEquals(null, objects);
-  }
-
-  @IsTest
   static void executeQuery_handles_multiple_fields() {
     Account testAcc1 = new Account(Name = 'Multi Field Test 1', Industry = 'Technology');
     Account testAcc2 = new Account(Name = 'Multi Field Test 2', Industry = 'Finance');
@@ -471,6 +451,197 @@ private class Data360ConfigServiceTests {
   @IsTest
   static void buildLabel_handles_empty_string() {
     System.assertEquals('', Data360ConfigService.buildLabel(''));
+  }
+
+  @IsTest
+  static void getFieldsViaDescribe_returns_fields_for_standard_object() {
+    Test.startTest();
+    List<Map<String, String>> fields = Data360ConfigService.getFieldsViaDescribe('Account');
+    Test.stopTest();
+
+    System.assert(fields.size() > 0, 'Expected fields from describeSObjects for Account');
+    Map<String, String> firstField = fields[0];
+    System.assert(firstField.containsKey('fieldName'), 'Expected fieldName key');
+    System.assert(firstField.containsKey('label'), 'Expected label key');
+  }
+
+  @IsTest
+  static void getFieldsViaDescribe_returns_empty_for_null() {
+    Test.startTest();
+    List<Map<String, String>> fields = Data360ConfigService.getFieldsViaDescribe(null);
+    Test.stopTest();
+
+    System.assertEquals(0, fields.size());
+  }
+
+  @IsTest
+  static void getFieldsViaDescribe_returns_empty_for_invalid_object() {
+    Test.startTest();
+    List<Map<String, String>> fields = Data360ConfigService.getFieldsViaDescribe('CompletelyFakeObject__xyz');
+    Test.stopTest();
+
+    System.assertEquals(0, fields.size(), 'Expected empty list for invalid object');
+  }
+
+  // ── getSearchableObjects Tests ─────────────────────────────────
+
+  @IsTest
+  static void getSearchableObjects_returns_results_for_known_term() {
+    Test.startTest();
+    List<Map<String, String>> results = Data360ConfigService.getSearchableObjects('Account');
+    Test.stopTest();
+
+    System.assert(results.size() > 0, 'Expected at least one result for "Account"');
+    Boolean foundAccount = false;
+    for (Map<String, String> r : results) {
+      System.assert(r.containsKey('apiName'), 'Expected apiName key');
+      System.assert(r.containsKey('label'), 'Expected label key');
+      if (r.get('apiName') == 'Account') {
+        foundAccount = true;
+      }
+    }
+    System.assert(foundAccount, 'Expected Account in results');
+  }
+
+  @IsTest
+  static void getSearchableObjects_handles_blank_search() {
+    Test.startTest();
+    List<Map<String, String>> results = Data360ConfigService.getSearchableObjects('');
+    Test.stopTest();
+
+    System.assert(results.size() > 0, 'Expected results for blank search (wildcard)');
+    System.assert(results.size() <= 20, 'Expected at most 20 results');
+  }
+
+  @IsTest
+  static void getSearchableObjects_handles_null_search() {
+    Test.startTest();
+    List<Map<String, String>> results = Data360ConfigService.getSearchableObjects(null);
+    Test.stopTest();
+
+    System.assert(results.size() > 0, 'Expected results for null search (wildcard)');
+  }
+
+  @IsTest
+  static void getSearchableObjects_excludes_dc_objects() {
+    Test.startTest();
+    List<Map<String, String>> results = Data360ConfigService.getSearchableObjects('');
+    Test.stopTest();
+
+    for (Map<String, String> r : results) {
+      String apiName = r.get('apiName');
+      System.assert(!apiName.endsWith('__dll'), 'Should exclude __dll objects: ' + apiName);
+      System.assert(!apiName.endsWith('__dlm'), 'Should exclude __dlm objects: ' + apiName);
+    }
+  }
+
+  @IsTest
+  static void getSearchableObjects_returns_empty_for_gibberish() {
+    Test.startTest();
+    List<Map<String, String>> results = Data360ConfigService.getSearchableObjects('zzzzznonexistent999');
+    Test.stopTest();
+
+    System.assertEquals(0, results.size(), 'Expected no results for gibberish term');
+  }
+
+  // ── getRecordFieldValues Tests ────────────────────────────────
+
+  @IsTest
+  static void getRecordFieldValues_returns_values_for_valid_record() {
+    Account a = new Account(Name = 'Context Test', Industry = 'Technology');
+    insert a;
+
+    Test.startTest();
+    Map<String, Object> result = Data360ConfigService.getRecordFieldValues(
+      'Account', a.Id, new List<String>{ 'Name', 'Industry' }
+    );
+    Test.stopTest();
+
+    System.assertEquals('Context Test', result.get('Name'));
+    System.assertEquals('Technology', result.get('Industry'));
+  }
+
+  @IsTest
+  static void getRecordFieldValues_returns_empty_for_blank_object() {
+    Test.startTest();
+    Map<String, Object> result = Data360ConfigService.getRecordFieldValues(
+      '', 'someId', new List<String>{ 'Name' }
+    );
+    Test.stopTest();
+
+    System.assertEquals(0, result.size(), 'Expected empty map for blank object');
+  }
+
+  @IsTest
+  static void getRecordFieldValues_returns_empty_for_null_record_id() {
+    Test.startTest();
+    Map<String, Object> result = Data360ConfigService.getRecordFieldValues(
+      'Account', null, new List<String>{ 'Name' }
+    );
+    Test.stopTest();
+
+    System.assertEquals(0, result.size(), 'Expected empty map for null recordId');
+  }
+
+  @IsTest
+  static void getRecordFieldValues_returns_empty_for_empty_field_list() {
+    Account a = new Account(Name = 'Test');
+    insert a;
+
+    Test.startTest();
+    Map<String, Object> result = Data360ConfigService.getRecordFieldValues(
+      'Account', a.Id, new List<String>()
+    );
+    Test.stopTest();
+
+    System.assertEquals(0, result.size(), 'Expected empty map for empty field list');
+  }
+
+  @IsTest
+  static void getRecordFieldValues_returns_empty_for_nonexistent_record() {
+    // Use a fabricated Id that matches Account key prefix but doesn't exist
+    String fakeId = '001000000000000AAA';
+
+    Test.startTest();
+    Map<String, Object> result = Data360ConfigService.getRecordFieldValues(
+      'Account', fakeId, new List<String>{ 'Name' }
+    );
+    Test.stopTest();
+
+    System.assertEquals(0, result.size(), 'Expected empty map for nonexistent record');
+  }
+
+  @IsTest
+  static void getRecordFieldValues_throws_for_invalid_field() {
+    Account a = new Account(Name = 'Test');
+    insert a;
+
+    try {
+      Test.startTest();
+      Data360ConfigService.getRecordFieldValues(
+        'Account', a.Id, new List<String>{ 'CompletelyFakeField__c' }
+      );
+      Test.stopTest();
+      System.assert(false, 'Expected exception for invalid field');
+    } catch (Exception e) {
+      System.assert(e.getMessage().contains('Failed to query'), 'Expected query failure: ' + e.getMessage());
+    }
+  }
+
+  @IsTest
+  static void getRecordFieldValues_filters_invalid_field_names() {
+    Account a = new Account(Name = 'Filter Test');
+    insert a;
+
+    Test.startTest();
+    // Only valid field names should be used; the invalid one (with spaces) should be filtered
+    Map<String, Object> result = Data360ConfigService.getRecordFieldValues(
+      'Account', a.Id, new List<String>{ 'Name', 'DROP TABLE', '' }
+    );
+    Test.stopTest();
+
+    System.assert(result.containsKey('Name'), 'Expected Name field in result');
+    System.assertEquals('Filter Test', result.get('Name'));
   }
 
   // ── Picklist Tests ────────────────────────────────────────────
