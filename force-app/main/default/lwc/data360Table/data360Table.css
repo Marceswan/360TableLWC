@@ -1,3 +1,14 @@
 :host {
   display: block;
 }
+
+/* Match standard SLDS2 related-list card: border, radius, inner spacing */
+lightning-card .slds-card {
+  border: 1px solid #c9c9c9;
+  border-radius: 0.5rem;
+}
+
+lightning-card .slds-card__body {
+  padding: 0;
+  margin: 0 0.75rem 0.75rem;
+}

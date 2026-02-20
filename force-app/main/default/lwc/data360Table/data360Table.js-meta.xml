@@ -14,13 +14,11 @@
       <property name="configName" label="Data 360 Config" type="String" datasource="apex://Data360ConfigPicklist" description="Select a saved Data 360 Table Configuration." required="true"/>
       <property name="title" label="Title" type="String"/>
       <property name="iconName" label="Icon" type="String" description="lightning-card compatible icon name (e.g. standard:data_streams)."/>
-      <property name="showRecordCount" label="Show Record Count" type="Boolean" default="false"/>
     </targetConfig>
     <targetConfig targets="lightning__RecordPage">
       <property name="configName" label="Data 360 Config" type="String" datasource="apex://Data360ConfigPicklist" description="Select a saved Data 360 Table Configuration. WHERE clause supports $record.FieldName merge." required="true"/>
       <property name="title" label="Title" type="String"/>
       <property name="iconName" label="Icon" type="String" description="lightning-card compatible icon name (e.g. standard:data_streams)."/>
-      <property name="showRecordCount" label="Show Record Count" type="Boolean" default="false"/>
     </targetConfig>
   </targetConfigs>
 </LightningComponentBundle>

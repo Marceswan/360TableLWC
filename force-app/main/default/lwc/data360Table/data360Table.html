@@ -1,9 +1,33 @@
 <template>
-  <lightning-card title={title} icon-name={iconName}>
-    <template if:true={showRecordCount}>
-      <p slot="actions" class="slds-text-body_small slds-text-color_weak">
-        {recordCountLabel}
-      </p>
+  <lightning-card icon-name={iconName}>
+    <template if:true={cardTitle}>
+      <span slot="title">
+        {cardTitle}
+      </span>
+    </template>
+    <template if:true={showToolbar}>
+      <div slot="actions" class="slds-grid slds-grid_vertical-align-center">
+        <template if:true={showSearchBar}>
+          <div class="slds-m-right_x-small" style="width: 200px;">
+            <lightning-input
+              type="search"
+              label="Search"
+              variant="label-hidden"
+              placeholder="Search records..."
+              value={searchTerm}
+              onchange={handleSearchChange}
+            ></lightning-input>
+          </div>
+        </template>
+        <template if:true={showRefreshButton}>
+          <lightning-button-icon
+            icon-name="utility:refresh"
+            alternative-text="Refresh"
+            variant="border-filled"
+            onclick={handleRefresh}
+          ></lightning-button-icon>
+        </template>
+      </div>
     </template>
     <template if:true={isLoading}>
       <div class="slds-is-relative slds-p-around_large">

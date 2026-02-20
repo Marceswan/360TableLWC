@@ -15,6 +15,11 @@ export default class Data360Configurator extends LightningElement {
   selectedObject = '';
   whereClause = '';
   rowLimit = 100;
+  defaultSortField = '';
+  defaultSortDirection = 'asc';
+  showRecordCount = false;
+  showSearch = false;
+  showRefresh = false;
 
   @track fields = [];
   configOptions = [];
@@ -38,6 +43,7 @@ export default class Data360Configurator extends LightningElement {
 
   // Field visibility filter
   fieldVisibilityFilter = 'all';
+  _dragFieldName;
 
   _configsMap = new Map();
 
@@ -54,21 +60,13 @@ export default class Data360Configurator extends LightningElement {
   }
 
   get fieldsWithPosition() {
-    let filtered = this.fields;
     if (this.fieldVisibilityFilter === 'selected') {
-      filtered = this.fields.filter(f => f.visible);
-    } else if (this.fieldVisibilityFilter === 'unselected') {
-      filtered = this.fields.filter(f => !f.visible);
+      return this.fields.filter(f => f.visible);
     }
-    const allLen = this.fields.length;
-    return filtered.map(f => {
-      const srcIdx = this.fields.findIndex(s => s.fieldName === f.fieldName);
-      return {
-        ...f,
-        isFirst: srcIdx === 0,
-        isLast: srcIdx === allLen - 1
-      };
-    });
+    if (this.fieldVisibilityFilter === 'unselected') {
+      return this.fields.filter(f => !f.visible);
+    }
+    return this.fields;
   }
 
   get isSaveDisabled() {
@@ -162,6 +160,27 @@ export default class Data360Configurator extends LightningElement {
     return this.contextObjectResults.length === 0 && this.contextObjectSearchTerm.length > 0;
   }
 
+  get sortableFieldOptions() {
+    const options = [{ label: '-- None --', value: '' }];
+    for (const f of this.fields) {
+      if (f.visible && f.sortable) {
+        options.push({ label: `${f.label} (${f.fieldName})`, value: f.fieldName });
+      }
+    }
+    return options;
+  }
+
+  get sortDirectionOptions() {
+    return [
+      { label: 'Ascending', value: 'asc' },
+      { label: 'Descending', value: 'desc' }
+    ];
+  }
+
+  get isDefaultSortDirectionDisabled() {
+    return !this.defaultSortField;
+  }
+
   async connectedCallback() {
     await this._loadConfigs();
   }
@@ -190,15 +209,56 @@ export default class Data360Configurator extends LightningElement {
       } else {
         this.objectApiNameInput = '';
       }
+      this.defaultSortField = parsed.defaultSortField || '';
+      this.defaultSortDirection = parsed.defaultSortDirection || 'asc';
+      this.showRecordCount = parsed.showRecordCount || false;
+      this.showSearch = parsed.showSearch || false;
+      this.showRefresh = parsed.showRefresh || false;
+      // Restore view state
+      if (parsed.viewState) {
+        this.fieldVisibilityFilter = parsed.viewState.fieldVisibilityFilter || 'all';
+        this.contextObjectApiName = parsed.viewState.contextObjectApiName || '';
+        this.contextObjectLabel = parsed.viewState.contextObjectLabel || '';
+        this.contextObjectSearchTerm = parsed.viewState.contextObjectSearchTerm || '';
+        this.contextRecordId = parsed.viewState.contextRecordId || '';
+      } else {
+        this.fieldVisibilityFilter = 'all';
+        this.contextObjectApiName = '';
+        this.contextObjectLabel = '';
+        this.contextObjectSearchTerm = '';
+        this.contextRecordId = '';
+      }
+      this._contextFieldValues = {};
       if (parsed.fields) {
-        const configFieldMap = new Map(parsed.fields.map(f => [f.fieldName, f]));
-        this.fields = this.fields.map(f => {
-          const configField = configFieldMap.get(f.fieldName);
-          if (configField) {
-            return { ...f, visible: configField.visible, label: configField.label };
+        // Build a map of loaded fields (from Apex) keyed by fieldName
+        const loadedFieldMap = new Map(this.fields.map(f => [f.fieldName, f]));
+        // Rebuild in config-saved order, then append any new fields not in the config
+        const orderedFields = [];
+        const seen = new Set();
+        for (const cf of parsed.fields) {
+          const loaded = loadedFieldMap.get(cf.fieldName);
+          if (loaded) {
+            orderedFields.push({
+              ...loaded,
+              visible: cf.visible,
+              label: cf.label,
+              sortable: cf.sortable !== false
+            });
+            seen.add(cf.fieldName);
           }
-          return { ...f, visible: false };
-        });
+        }
+        // Append fields that exist on the object but weren't in the saved config
+        for (const f of this.fields) {
+          if (!seen.has(f.fieldName)) {
+            orderedFields.push({ ...f, visible: false, sortable: true });
+          }
+        }
+        this.fields = orderedFields;
+      }
+      // Parse merge tokens and fetch context values if a record was saved
+      this._parseMergeTokens();
+      if (this.contextRecordId && this._mergeTokens.length > 0) {
+        this._fetchContextFieldValues();
       }
     } catch (e) {
       this._showToast('Error', 'Failed to parse config JSON: ' + e.message, 'error');
@@ -215,6 +275,11 @@ export default class Data360Configurator extends LightningElement {
     this.rowLimit = 100;
     this.fields = [];
     this.fieldVisibilityFilter = 'all';
+    this.defaultSortField = '';
+    this.defaultSortDirection = 'asc';
+    this.showRecordCount = false;
+    this.showSearch = false;
+    this.showRefresh = false;
     // Clear context state
     this.contextObjectApiName = '';
     this.contextObjectLabel = '';
@@ -267,7 +332,8 @@ export default class Data360Configurator extends LightningElement {
         this.fields = fieldData.map(f => ({
           fieldName: f.fieldName,
           label: f.label,
-          visible: true
+          visible: true,
+          sortable: true
         }));
         this._showToast('Success', `Loaded ${fieldData.length} fields for ${objectName}`, 'success');
       }
@@ -319,22 +385,96 @@ export default class Data360Configurator extends LightningElement {
     this.fieldVisibilityFilter = event.detail.value;
   }
 
-  handleMoveFieldUp(event) {
-    const fieldName = event.currentTarget.dataset.fieldName;
-    const idx = this.fields.findIndex(f => f.fieldName === fieldName);
-    if (idx <= 0) return;
-    const updated = [...this.fields];
-    [updated[idx - 1], updated[idx]] = [updated[idx], updated[idx - 1]];
-    this.fields = updated;
+  handleFieldSortableChange(event) {
+    const fieldName = event.target.dataset.fieldName;
+    this.fields = this.fields.map(f => {
+      if (f.fieldName === fieldName) {
+        return { ...f, sortable: event.target.checked };
+      }
+      return f;
+    });
+    // Clear default sort if the field was deselected from sortable
+    if (!event.target.checked && this.defaultSortField === fieldName) {
+      this.defaultSortField = '';
+    }
   }
 
-  handleMoveFieldDown(event) {
-    const fieldName = event.currentTarget.dataset.fieldName;
-    const idx = this.fields.findIndex(f => f.fieldName === fieldName);
-    if (idx < 0 || idx >= this.fields.length - 1) return;
+  handleDefaultSortFieldChange(event) {
+    this.defaultSortField = event.detail.value;
+  }
+
+  handleDefaultSortDirectionChange(event) {
+    this.defaultSortDirection = event.detail.value;
+  }
+
+  handleShowRecordCountChange(event) {
+    this.showRecordCount = event.target.checked;
+  }
+
+  handleShowSearchChange(event) {
+    this.showSearch = event.target.checked;
+  }
+
+  handleShowRefreshChange(event) {
+    this.showRefresh = event.target.checked;
+  }
+
+  handleDragStart(event) {
+    this._dragFieldName = event.currentTarget.dataset.fieldName;
+    event.currentTarget.classList.add('field-row-dragging');
+    event.dataTransfer.effectAllowed = 'move';
+  }
+
+  handleDragOver(event) {
+    event.preventDefault();
+    event.dataTransfer.dropEffect = 'move';
+    const row = event.target.closest('tr[data-field-name]');
+    // Clear previous drop indicators
+    this.template.querySelectorAll('.field-row-drop-above, .field-row-drop-below').forEach(el => {
+      el.classList.remove('field-row-drop-above', 'field-row-drop-below');
+    });
+    if (row && row.dataset.fieldName !== this._dragFieldName) {
+      const rect = row.getBoundingClientRect();
+      const midY = rect.top + rect.height / 2;
+      if (event.clientY < midY) {
+        row.classList.add('field-row-drop-above');
+      } else {
+        row.classList.add('field-row-drop-below');
+      }
+    }
+  }
+
+  handleDrop(event) {
+    event.preventDefault();
+    const targetRow = event.target.closest('tr[data-field-name]');
+    if (!targetRow || !this._dragFieldName) return;
+    const targetFieldName = targetRow.dataset.fieldName;
+    if (targetFieldName === this._dragFieldName) return;
+
+    const fromIdx = this.fields.findIndex(f => f.fieldName === this._dragFieldName);
+    const toIdx = this.fields.findIndex(f => f.fieldName === targetFieldName);
+    if (fromIdx < 0 || toIdx < 0) return;
+
+    // Determine if dropping above or below the target
+    const rect = targetRow.getBoundingClientRect();
+    const dropAbove = event.clientY < rect.top + rect.height / 2;
+
     const updated = [...this.fields];
-    [updated[idx], updated[idx + 1]] = [updated[idx + 1], updated[idx]];
+    const [moved] = updated.splice(fromIdx, 1);
+    let insertIdx = updated.findIndex(f => f.fieldName === targetFieldName);
+    if (!dropAbove) {
+      insertIdx += 1;
+    }
+    updated.splice(insertIdx, 0, moved);
     this.fields = updated;
+    this._dragFieldName = null;
+  }
+
+  handleDragEnd() {
+    this._dragFieldName = null;
+    this.template.querySelectorAll('.field-row-dragging, .field-row-drop-above, .field-row-drop-below').forEach(el => {
+      el.classList.remove('field-row-dragging', 'field-row-drop-above', 'field-row-drop-below');
+    });
   }
 
   handleWhereChange(event) {
@@ -361,7 +501,19 @@ export default class Data360Configurator extends LightningElement {
         objectApiName: this.selectedObject,
         fields: this.fields,
         whereClause: this.whereClause,
-        limit: this.rowLimit
+        limit: this.rowLimit,
+        defaultSortField: this.defaultSortField,
+        defaultSortDirection: this.defaultSortDirection,
+        showRecordCount: this.showRecordCount,
+        showSearch: this.showSearch,
+        showRefresh: this.showRefresh,
+        viewState: {
+          fieldVisibilityFilter: this.fieldVisibilityFilter,
+          contextObjectApiName: this.contextObjectApiName,
+          contextObjectLabel: this.contextObjectLabel,
+          contextObjectSearchTerm: this.contextObjectSearchTerm,
+          contextRecordId: this.contextRecordId
+        }
       });
 
       const record = {
@@ -532,7 +684,8 @@ export default class Data360Configurator extends LightningElement {
       this.fields = fieldData.map(f => ({
         fieldName: f.fieldName,
         label: f.label,
-        visible: true
+        visible: true,
+        sortable: true
       }));
     } catch (error) {
       this.fields = [];

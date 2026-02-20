@@ -45,6 +45,10 @@ export default class Data360Table extends LightningElement {
   // UI state
   isLoading = false;
   errorMessage = '';
+  searchTerm = '';
+  _allTableData = [];
+  _showSearch = false;
+  _showRefresh = false;
 
   // Private
   _isRendered = false;
@@ -68,7 +72,27 @@ export default class Data360Table extends LightningElement {
   }
 
   get recordCountLabel() {
-    return `${this.tableData.length} record${this.tableData.length !== 1 ? 's' : ''}`;
+    return `(${this.tableData.length})`;
+  }
+
+  get cardTitle() {
+    if (!this.title) return '';
+    if (this.showRecordCount && this.tableData.length > 0) {
+      return `${this.title} ${this.recordCountLabel}`;
+    }
+    return this.title;
+  }
+
+  get showSearchBar() {
+    return this._showSearch;
+  }
+
+  get showRefreshButton() {
+    return this._showRefresh;
+  }
+
+  get showToolbar() {
+    return this._showSearch || this._showRefresh;
   }
 
   // Wire for $record merge field resolution
@@ -139,6 +163,12 @@ export default class Data360Table extends LightningElement {
       }
 
       this._columnLabelsMap = new Map(visibleFields.map((f) => [f.fieldName, f.label]));
+      this._sortableFieldsMap = new Map(visibleFields.map((f) => [f.fieldName, f.sortable !== false]));
+      this._defaultSortField = parsed.defaultSortField || '';
+      this._defaultSortDirection = parsed.defaultSortDirection || 'asc';
+      if (parsed.showRecordCount) this.showRecordCount = true;
+      if (parsed.showSearch) this._showSearch = true;
+      if (parsed.showRefresh) this._showRefresh = true;
 
       const fieldNames = visibleFields.map((f) => f.fieldName).join(', ');
       const whereClause = parsed.whereClause || '';
@@ -208,6 +238,25 @@ export default class Data360Table extends LightningElement {
     this.tableData = this._sortData(fieldName, sortDirection);
   }
 
+  handleSearchChange(event) {
+    const term = (event.detail.value || '').toLowerCase();
+    this.searchTerm = term;
+    if (!term) {
+      this.tableData = this._allTableData;
+      return;
+    }
+    this.tableData = this._allTableData.filter((row) => {
+      return Object.values(row).some((val) => val != null && String(val).toLowerCase().includes(term));
+    });
+  }
+
+  async handleRefresh() {
+    if (this._assembledQuery) {
+      this.searchTerm = '';
+      await this._executeAndRender(this._assembledQuery);
+    }
+  }
+
   // Private methods
 
   async _executeAndRender(queryString) {
@@ -217,13 +266,16 @@ export default class Data360Table extends LightningElement {
       const result = await executeQuery({ queryString: queryString });
       this._assembledQuery = queryString;
 
-      // Apply column labels from config
+      // Apply column labels and per-field sortable from config
       this.tableColumns = result.tableColumns.map((col) => {
         const customLabel = this._columnLabelsMap.get(col.fieldName);
+        const isSortable = this._sortableFieldsMap
+          ? this._sortableFieldsMap.get(col.fieldName) !== false
+          : true;
         return {
           ...col,
           label: customLabel || col.label,
-          sortable: true
+          sortable: isSortable
         };
       });
 
@@ -235,6 +287,16 @@ export default class Data360Table extends LightningElement {
       } else {
         this.keyField = 'Id';
         this.tableData = result.tableData;
+      }
+
+      this._allTableData = [...this.tableData];
+
+      // Apply default sort if configured
+      if (this._defaultSortField && this.tableData.length > 0) {
+        this.sortedBy = this._defaultSortField;
+        this.sortedDirection = this._defaultSortDirection || 'asc';
+        this.tableData = this._sortData(this.sortedBy, this.sortedDirection);
+        this._allTableData = [...this.tableData];
       }
     } catch (error) {
       this._handleError('Query Error', error);

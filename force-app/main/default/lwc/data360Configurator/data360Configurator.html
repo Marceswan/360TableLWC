@@ -80,20 +80,21 @@
               <div class="slds-grid slds-grid_vertical-align-end slds-m-bottom_x-small">
                 <h3 class="slds-text-heading_small slds-grow slds-align-middle">Fields</h3>
                 <lightning-combobox
-                  label="Show"
+                  label="Filter fields"
                   value={fieldVisibilityFilter}
                   options={fieldVisibilityFilterOptions}
                   onchange={handleFieldVisibilityFilterChange}
-                  variant="label-inline"
+                  variant="label-hidden"
                   class="slds-m-right_small field-filter-combo"
                 ></lightning-combobox>
                 <lightning-button label="Select All" onclick={handleSelectAll} variant="neutral" class="slds-m-right_xx-small"></lightning-button>
                 <lightning-button label="Deselect All" onclick={handleDeselectAll} variant="neutral"></lightning-button>
               </div>
               <div class="slds-scrollable_y" style="max-height: 400px;">
-                <table class="slds-table slds-table_cell-buffer slds-table_bordered slds-table_striped">
+                <table class="slds-table slds-table_cell-buffer slds-table_bordered slds-table_striped field-table">
                   <thead>
                     <tr class="slds-line-height_reset">
+                      <th scope="col" style="width: 36px;"></th>
                       <th scope="col" style="width: 50px;">
                         <span class="slds-truncate">Visible</span>
                       </th>
@@ -103,14 +104,24 @@
                       <th scope="col">
                         <span class="slds-truncate">Label</span>
                       </th>
-                      <th scope="col" style="width: 80px;">
-                        <span class="slds-truncate">Order</span>
+                      <th scope="col" style="width: 60px;">
+                        <span class="slds-truncate">Sortable</span>
                       </th>
                     </tr>
                   </thead>
-                  <tbody>
-                    <template for:each={fieldsWithPosition} for:item="field" for:index="idx">
-                      <tr key={field.fieldName}>
+                  <tbody ondragover={handleDragOver} ondrop={handleDrop}>
+                    <template for:each={fieldsWithPosition} for:item="field">
+                      <tr
+                        key={field.fieldName}
+                        draggable="true"
+                        data-field-name={field.fieldName}
+                        ondragstart={handleDragStart}
+                        ondragend={handleDragEnd}
+                        class="field-row"
+                      >
+                        <td class="drag-handle-cell">
+                          <lightning-icon icon-name="utility:drag_and_drop" size="xx-small" alternative-text="Drag to reorder"></lightning-icon>
+                        </td>
                         <td>
                           <lightning-input
                             type="checkbox"
@@ -134,33 +145,42 @@
                           ></lightning-input>
                         </td>
                         <td>
-                          <div class="slds-grid">
-                            <lightning-button-icon
-                              icon-name="utility:arrowup"
-                              alternative-text="Move up"
-                              variant="bare"
-                              size="small"
-                              data-field-name={field.fieldName}
-                              data-index={idx}
-                              onclick={handleMoveFieldUp}
-                              disabled={field.isFirst}
-                            ></lightning-button-icon>
-                            <lightning-button-icon
-                              icon-name="utility:arrowdown"
-                              alternative-text="Move down"
-                              variant="bare"
-                              size="small"
-                              data-field-name={field.fieldName}
-                              data-index={idx}
-                              onclick={handleMoveFieldDown}
-                              disabled={field.isLast}
-                            ></lightning-button-icon>
-                          </div>
+                          <lightning-input
+                            type="checkbox"
+                            checked={field.sortable}
+                            data-field-name={field.fieldName}
+                            onchange={handleFieldSortableChange}
+                            variant="label-hidden"
+                            label="Sortable"
+                          ></lightning-input>
                         </td>
                       </tr>
                     </template>
                   </tbody>
                 </table>
+              </div>
+            </div>
+          </template>
+
+          <template if:true={hasFields}>
+            <div class="slds-grid slds-gutters_xx-small slds-m-bottom_small">
+              <div class="slds-col slds-size_2-of-3">
+                <lightning-combobox
+                  label="Default Sort Field"
+                  value={defaultSortField}
+                  options={sortableFieldOptions}
+                  onchange={handleDefaultSortFieldChange}
+                  placeholder="-- None --"
+                ></lightning-combobox>
+              </div>
+              <div class="slds-col slds-size_1-of-3">
+                <lightning-combobox
+                  label="Direction"
+                  value={defaultSortDirection}
+                  options={sortDirectionOptions}
+                  onchange={handleDefaultSortDirectionChange}
+                  disabled={isDefaultSortDirectionDisabled}
+                ></lightning-combobox>
               </div>
             </div>
           </template>
@@ -182,6 +202,34 @@
             max="2000"
             class="slds-m-bottom_small"
           ></lightning-input>
+
+          <h3 class="slds-text-heading_small slds-m-bottom_x-small slds-m-top_small">Table Options</h3>
+          <div class="slds-grid slds-wrap slds-m-bottom_small">
+            <div class="slds-col slds-size_1-of-3">
+              <lightning-input
+                type="checkbox"
+                label="Show Record Count"
+                checked={showRecordCount}
+                onchange={handleShowRecordCountChange}
+              ></lightning-input>
+            </div>
+            <div class="slds-col slds-size_1-of-3">
+              <lightning-input
+                type="checkbox"
+                label="Show Search"
+                checked={showSearch}
+                onchange={handleShowSearchChange}
+              ></lightning-input>
+            </div>
+            <div class="slds-col slds-size_1-of-3">
+              <lightning-input
+                type="checkbox"
+                label="Show Refresh"
+                checked={showRefresh}
+                onchange={handleShowRefreshChange}
+              ></lightning-input>
+            </div>
+          </div>
         </div>
       </div>
 
