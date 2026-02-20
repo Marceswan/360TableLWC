@@ -27,4 +27,12 @@
         <field>Data_360_Table_Config__c.Object_API_Name__c</field>
         <readable>true</readable>
     </fieldPermissions>
+    <tabSettings>
+        <tab>Data_360_Table_Config__c</tab>
+        <visibility>Visible</visibility>
+    </tabSettings>
+    <tabSettings>
+        <tab>X360Table_Configurator</tab>
+        <visibility>Visible</visibility>
+    </tabSettings>
 </PermissionSet>
