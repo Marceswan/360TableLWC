@@ -1,59 +1,166 @@
 <template>
-  <lightning-card icon-name={iconName}>
-    <template if:true={cardTitle}>
-      <span slot="title">
-        {cardTitle}
-      </span>
-    </template>
-    <template if:true={showToolbar}>
-      <div slot="actions" class="slds-grid slds-grid_vertical-align-center">
-        <template if:true={showSearchBar}>
-          <div class="slds-m-right_x-small" style="width: 200px;">
-            <lightning-input
-              type="search"
-              label="Search"
-              variant="label-hidden"
-              placeholder="Search records..."
-              value={searchTerm}
-              onchange={handleSearchChange}
-            ></lightning-input>
+  <!-- ===== Related List layout ===== -->
+  <template lwc:if={isUsedAsRelatedList}>
+    <div
+      class="slds-page-header slds-page-header_record-home page-header slds-p-bottom_none"
+    >
+      <div class="slds-page-header__row slds-m-bottom_small">
+        <div class="slds-page-header__col-title">
+          <div class="slds-media">
+            <div class="slds-media__figure">
+              <template lwc:if={iconName}>
+                <span class="slds-icon_container">
+                  <lightning-icon
+                    icon-name={iconName}
+                    alternative-text={title}
+                    title={title}
+                    size="small"
+                  ></lightning-icon>
+                </span>
+              </template>
+            </div>
+            <div class="slds-media__body">
+              <h2 class="slds-card__header-title">{cardTitle}</h2>
+            </div>
           </div>
-        </template>
-        <template if:true={showRefreshButton}>
-          <lightning-button-icon
-            icon-name="utility:refresh"
-            alternative-text="Refresh"
-            variant="border-filled"
-            onclick={handleRefresh}
-          ></lightning-button-icon>
-        </template>
+        </div>
+
+        <div class="slds-page-header__col-actions">
+          <div class="slds-page-header__controls">
+            <div class="slds-page-header__control">
+              <template lwc:if={showSearchBar}>
+                <div class="slds-m-right_x-small" style="width: 200px">
+                  <lightning-input
+                    type="search"
+                    label="Search"
+                    variant="label-hidden"
+                    placeholder="Search records..."
+                    value={searchTerm}
+                    onchange={handleSearchChange}
+                  ></lightning-input>
+                </div>
+              </template>
+              <template lwc:if={showRefreshButton}>
+                <lightning-button-icon
+                  icon-name="utility:refresh"
+                  alternative-text="Refresh"
+                  variant="border-filled"
+                  onclick={handleRefresh}
+                ></lightning-button-icon>
+              </template>
+            </div>
+          </div>
+        </div>
       </div>
-    </template>
-    <template if:true={isLoading}>
-      <div class="slds-is-relative slds-p-around_large">
-        <lightning-spinner alternative-text="Loading" size="small"></lightning-spinner>
+
+      <div class="slds-page-header__row slds-page-header__row_gutters">
+        <div class="slds-page-header__col-details">
+          <ul
+            class="slds-page-header__detail-row slds-p-around_none page-header-detail"
+          >
+            <template lwc:if={isLoading}>
+              <div class="slds-is-relative slds-p-around_large">
+                <lightning-spinner
+                  alternative-text="Loading"
+                  size="small"
+                ></lightning-spinner>
+              </div>
+            </template>
+            <template lwc:if={hasData}>
+              <lightning-datatable
+                key-field={keyField}
+                data={tableData}
+                columns={tableColumns}
+                hide-checkbox-column
+                sorted-by={sortedBy}
+                sorted-direction={sortedDirection}
+                onsort={handleSort}
+              ></lightning-datatable>
+            </template>
+            <template lwc:if={hasError}>
+              <div class="slds-p-around_medium slds-text-color_error">
+                {errorMessage}
+              </div>
+            </template>
+            <template lwc:if={isEmpty}>
+              <div
+                class="slds-p-around_medium slds-text-color_weak slds-align_absolute-center"
+              >
+                No records found.
+              </div>
+            </template>
+          </ul>
+        </div>
       </div>
-    </template>
-    <template if:true={hasData}>
-      <lightning-datatable
-        key-field={keyField}
-        data={tableData}
-        columns={tableColumns}
-        hide-checkbox-column
-        sorted-by={sortedBy}
-        sorted-direction={sortedDirection}
-        onsort={handleSort}
-      ></lightning-datatable>
-    </template>
-    <template if:true={hasError}>
-      <div class="slds-p-around_medium slds-text-color_error">
-        {errorMessage}
-      </div>
-    </template>
-    <template if:true={isEmpty}>
-      <div class="slds-p-around_medium slds-text-color_weak slds-align_absolute-center">
-        No records found.
-      </div>
-    </template>
-  </lightning-card>
+    </div>
+  </template>
+
+  <!-- ===== Standard Card layout ===== -->
+  <template lwc:else>
+    <lightning-card icon-name={iconName}>
+      <template lwc:if={cardTitle}>
+        <span slot="title">
+          {cardTitle}
+        </span>
+      </template>
+      <template lwc:if={showToolbar}>
+        <div
+          slot="actions"
+          class="slds-grid slds-grid_vertical-align-center"
+        >
+          <template lwc:if={showSearchBar}>
+            <div class="slds-m-right_x-small" style="width: 200px">
+              <lightning-input
+                type="search"
+                label="Search"
+                variant="label-hidden"
+                placeholder="Search records..."
+                value={searchTerm}
+                onchange={handleSearchChange}
+              ></lightning-input>
+            </div>
+          </template>
+          <template lwc:if={showRefreshButton}>
+            <lightning-button-icon
+              icon-name="utility:refresh"
+              alternative-text="Refresh"
+              variant="border-filled"
+              onclick={handleRefresh}
+            ></lightning-button-icon>
+          </template>
+        </div>
+      </template>
+      <template lwc:if={isLoading}>
+        <div class="slds-is-relative slds-p-around_large">
+          <lightning-spinner
+            alternative-text="Loading"
+            size="small"
+          ></lightning-spinner>
+        </div>
+      </template>
+      <template lwc:if={hasData}>
+        <lightning-datatable
+          key-field={keyField}
+          data={tableData}
+          columns={tableColumns}
+          hide-checkbox-column
+          sorted-by={sortedBy}
+          sorted-direction={sortedDirection}
+          onsort={handleSort}
+        ></lightning-datatable>
+      </template>
+      <template lwc:if={hasError}>
+        <div class="slds-p-around_medium slds-text-color_error">
+          {errorMessage}
+        </div>
+      </template>
+      <template lwc:if={isEmpty}>
+        <div
+          class="slds-p-around_medium slds-text-color_weak slds-align_absolute-center"
+        >
+          No records found.
+        </div>
+      </template>
+    </lightning-card>
+  </template>
 </template>

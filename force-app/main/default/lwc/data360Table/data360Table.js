@@ -14,6 +14,7 @@ export default class Data360Table extends LightningElement {
   @api title;
   @api iconName;
   @api showRecordCount = false;
+  @api isUsedAsRelatedList = false;
 
   // For direct query mode (used by configurator preview)
   _columnLabels;
@@ -237,6 +238,7 @@ export default class Data360Table extends LightningElement {
       if (parsed.showRecordCount) this.showRecordCount = true;
       if (parsed.showSearch) this._showSearch = true;
       if (parsed.showRefresh) this._showRefresh = true;
+      if (parsed.isUsedAsRelatedList) this.isUsedAsRelatedList = true;
 
       const fieldNames = visibleFields.map((f) => f.fieldName).join(', ');
       const whereClause = parsed.whereClause || '';

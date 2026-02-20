@@ -20,6 +20,7 @@ export default class Data360Configurator extends LightningElement {
   showRecordCount = false;
   showSearch = false;
   showRefresh = false;
+  isUsedAsRelatedList = false;
 
   @track fields = [];
   configOptions = [];
@@ -226,6 +227,7 @@ export default class Data360Configurator extends LightningElement {
       this.showRecordCount = parsed.showRecordCount || false;
       this.showSearch = parsed.showSearch || false;
       this.showRefresh = parsed.showRefresh || false;
+      this.isUsedAsRelatedList = parsed.isUsedAsRelatedList || false;
       // Restore view state
       if (parsed.viewState) {
         this.fieldVisibilityFilter = parsed.viewState.fieldVisibilityFilter || 'all';
@@ -298,6 +300,7 @@ export default class Data360Configurator extends LightningElement {
     this.showRecordCount = false;
     this.showSearch = false;
     this.showRefresh = false;
+    this.isUsedAsRelatedList = false;
     // Clear context state
     this.contextObjectApiName = '';
     this.contextObjectLabel = '';
@@ -437,6 +440,10 @@ export default class Data360Configurator extends LightningElement {
     this.showRefresh = event.target.checked;
   }
 
+  handleIsUsedAsRelatedListChange(event) {
+    this.isUsedAsRelatedList = event.target.checked;
+  }
+
   handleDragStart(event) {
     this._dragFieldName = event.currentTarget.dataset.fieldName;
     event.currentTarget.classList.add('field-row-dragging');
@@ -525,6 +532,7 @@ export default class Data360Configurator extends LightningElement {
         showRecordCount: this.showRecordCount,
         showSearch: this.showSearch,
         showRefresh: this.showRefresh,
+        isUsedAsRelatedList: this.isUsedAsRelatedList,
         viewState: {
           fieldVisibilityFilter: this.fieldVisibilityFilter,
           contextObjectApiName: this.contextObjectApiName,
