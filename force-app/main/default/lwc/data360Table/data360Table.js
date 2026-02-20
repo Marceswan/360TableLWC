@@ -16,7 +16,77 @@ export default class Data360Table extends LightningElement {
   @api showRecordCount = false;
 
   // For direct query mode (used by configurator preview)
-  @api columnLabels;
+  _columnLabels;
+
+  @api
+  get columnLabels() {
+    return this._columnLabels;
+  }
+  set columnLabels(value) {
+    const prev = this._columnLabels;
+    this._columnLabels = value;
+    this._parseColumnLabels();
+    if (prev !== undefined && prev !== value && this.tableColumns.length > 0) {
+      this._applyColumnLabelsAndOrder();
+    }
+  }
+
+  _showSearch = false;
+
+  @api
+  get showSearch() {
+    return this._showSearch;
+  }
+  set showSearch(value) {
+    this._showSearch = value;
+  }
+
+  _showRefresh = false;
+
+  @api
+  get showRefresh() {
+    return this._showRefresh;
+  }
+  set showRefresh(value) {
+    this._showRefresh = value;
+  }
+
+  _defaultSortField = '';
+
+  @api
+  get defaultSortField() {
+    return this._defaultSortField;
+  }
+  set defaultSortField(value) {
+    this._defaultSortField = value || '';
+    this._applyDefaultSort();
+  }
+
+  _defaultSortDirection = 'asc';
+
+  @api
+  get defaultSortDirection() {
+    return this._defaultSortDirection;
+  }
+  set defaultSortDirection(value) {
+    this._defaultSortDirection = value || 'asc';
+    this._applyDefaultSort();
+  }
+
+  _sortableFieldsString;
+
+  @api
+  get sortableFields() {
+    return this._sortableFieldsString;
+  }
+  set sortableFields(value) {
+    const prev = this._sortableFieldsString;
+    this._sortableFieldsString = value;
+    this._parseSortableFields();
+    if (prev !== undefined && prev !== value && this.tableColumns.length > 0) {
+      this._applyColumnLabelsAndOrder();
+    }
+  }
 
   _queryString;
   _queryStringInitialized = false;
@@ -47,8 +117,6 @@ export default class Data360Table extends LightningElement {
   errorMessage = '';
   searchTerm = '';
   _allTableData = [];
-  _showSearch = false;
-  _showRefresh = false;
 
   // Private
   _isRendered = false;
@@ -266,18 +334,29 @@ export default class Data360Table extends LightningElement {
       const result = await executeQuery({ queryString: queryString });
       this._assembledQuery = queryString;
 
-      // Apply column labels and per-field sortable from config
-      this.tableColumns = result.tableColumns.map((col) => {
-        const customLabel = this._columnLabelsMap.get(col.fieldName);
-        const isSortable = this._sortableFieldsMap
-          ? this._sortableFieldsMap.get(col.fieldName) !== false
-          : true;
-        return {
-          ...col,
-          label: customLabel || col.label,
-          sortable: isSortable
-        };
-      });
+      // Apply column labels, sortable flags, and preserve order from config
+      const resultColMap = new Map(
+        result.tableColumns.map((col) => {
+          const customLabel = this._columnLabelsMap.get(col.fieldName);
+          const isSortable = this._sortableFieldsMap
+            ? this._sortableFieldsMap.get(col.fieldName) !== false
+            : true;
+          return [col.fieldName, { ...col, label: customLabel || col.label, sortable: isSortable }];
+        })
+      );
+      if (this._columnLabelsMap.size > 0) {
+        const ordered = [];
+        for (const fieldName of this._columnLabelsMap.keys()) {
+          const col = resultColMap.get(fieldName);
+          if (col) ordered.push(col);
+        }
+        for (const [fieldName, col] of resultColMap) {
+          if (!this._columnLabelsMap.has(fieldName)) ordered.push(col);
+        }
+        this.tableColumns = ordered;
+      } else {
+        this.tableColumns = Array.from(resultColMap.values());
+      }
 
       // Detect key field - use 'Id' if present, otherwise generate row keys
       const hasId = result.tableColumns.some((c) => c.fieldName === 'Id');
@@ -306,13 +385,55 @@ export default class Data360Table extends LightningElement {
   }
 
   _parseColumnLabels() {
-    if (this.columnLabels) {
+    if (this._columnLabels) {
       this._columnLabelsMap = new Map(
-        this.columnLabels
+        this._columnLabels
           .split(',')
           .filter((m) => m.includes('=>'))
           .map((m) => m.split('=>').map((p) => p.trim()))
       );
+    }
+  }
+
+  _parseSortableFields() {
+    if (this._sortableFieldsString) {
+      this._sortableFieldsMap = new Map(
+        this._sortableFieldsString
+          .split(',')
+          .filter((m) => m.includes('=>'))
+          .map((m) => {
+            const parts = m.split('=>').map((p) => p.trim());
+            return [parts[0], parts[1] !== 'false'];
+          })
+      );
+    }
+  }
+
+  _applyColumnLabelsAndOrder() {
+    if (this._columnLabelsMap.size === 0 || this.tableColumns.length === 0) return;
+    const colMap = new Map(this.tableColumns.map((c) => [c.fieldName, c]));
+    const ordered = [];
+    for (const [fieldName, label] of this._columnLabelsMap) {
+      const col = colMap.get(fieldName);
+      if (col) {
+        const isSortable = this._sortableFieldsMap
+          ? this._sortableFieldsMap.get(fieldName) !== false
+          : true;
+        ordered.push({ ...col, label, sortable: isSortable });
+      }
+    }
+    this.tableColumns = ordered;
+  }
+
+  _applyDefaultSort() {
+    if (this._allTableData.length === 0) return;
+    if (this._defaultSortField) {
+      this.sortedBy = this._defaultSortField;
+      this.sortedDirection = this._defaultSortDirection || 'asc';
+      this.tableData = this._sortData(this.sortedBy, this.sortedDirection);
+    } else {
+      this.sortedBy = undefined;
+      this.sortedDirection = 'asc';
     }
   }
 

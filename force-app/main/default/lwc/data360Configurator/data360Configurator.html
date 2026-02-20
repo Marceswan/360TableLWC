@@ -309,9 +309,15 @@
               {resolvedPreviewQueryString}
             </p>
             <c-data360-table
-              query-string={resolvedPreviewQueryString}
               column-labels={previewColumnLabels}
-              show-record-count
+              sortable-fields={previewSortableFields}
+              default-sort-field={defaultSortField}
+              default-sort-direction={defaultSortDirection}
+              query-string={resolvedPreviewQueryString}
+              show-record-count={showRecordCount}
+              show-search={showSearch}
+              show-refresh={showRefresh}
+              title="Preview"
             ></c-data360-table>
           </template>
           <template if:false={resolvedPreviewQueryString}>

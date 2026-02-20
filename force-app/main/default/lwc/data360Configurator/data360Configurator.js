@@ -108,6 +108,14 @@ export default class Data360Configurator extends LightningElement {
     return visibleFields.map(f => `${f.fieldName}=>${f.label}`).join(',');
   }
 
+  get previewSortableFields() {
+    const visibleFields = this.fields.filter(f => f.visible);
+    if (visibleFields.length === 0) {
+      return '';
+    }
+    return visibleFields.map(f => `${f.fieldName}=>${f.sortable}`).join(',');
+  }
+
   get resolvedPreviewQueryString() {
     const raw = this.previewQueryString;
     if (!raw) {
